@@ -3,7 +3,7 @@
     "displayName": "MAA Pipeline Formatter",
     "description": "Format MaaFramework Pipeline JSON files with intelligent structure-aware formatting",
     "version": "1.0.0",
-    "publisher": "maagf1",
+    "publisher": "SwordofMorning",
     "author": {
         "name": "MaaGF1",
         "url": "https://github.com/MaaGF1"
