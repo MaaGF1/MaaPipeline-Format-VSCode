@@ -1,21 +1,37 @@
 {
     "name": "maapipeline-format",
     "displayName": "MAA Pipeline Formatter",
-    "description": "Format MaaFramework Pipeline JSON files",
-    "version": "0.0.1",
-    "publisher": "your-publisher",
+    "description": "Format MaaFramework Pipeline JSON files with intelligent structure-aware formatting",
+    "version": "1.0.0",
+    "publisher": "maagf1",
+    "author": {
+        "name": "MaaGF1",
+        "url": "https://github.com/MaaGF1"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/MaaGF1/MaaPipeline-Format-VSCode.git"
+    },
+    "bugs": {
+        "url": "https://github.com/MaaGF1/MaaPipeline-Format-VSCode/issues"
+    },
+    "homepage": "https://github.com/MaaGF1/MaaPipeline-Format-VSCode#readme",
     "engines": {
         "vscode": "^1.60.0"
     },
     "categories": [
-        "Formatters"
+        "Formatters",
+        "Other"
     ],
     "keywords": [
         "maa",
         "pipeline",
         "json",
-        "formatter"
+        "formatter",
+        "maaframework"
     ],
+    "icon": "icon.png",
     "activationEvents": [
         "onLanguage:json"
     ],
@@ -24,13 +40,8 @@
         "languages": [
             {
                 "id": "json",
-                "aliases": [
-                    "JSON",
-                    "json"
-                ],
-                "extensions": [
-                    ".json"
-                ]
+                "aliases": ["JSON", "json"],
+                "extensions": [".json"]
             }
         ],
         "commands": [
@@ -69,26 +80,29 @@
                 "maapipeline-format.pythonPath": {
                     "type": "string",
                     "default": "python",
-                    "description": "Path to Python executable (e.g., 'python', 'python3', or full path)"
+                    "description": "Path to Python executable (fallback only, built-in executable is preferred)"
                 },
-                "maapipeline-format.scriptPath": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Path to the Python formatting script (leave empty to use built-in script)"
+                "maapipeline-format.useBuiltinExecutable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Use built-in Python executable (recommended)"
                 }
             }
         }
     },
     "scripts": {
+        "vscode:prepublish": "npm run compile && npm run build:python",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "package": "vsce package"
+        "build:python": "python build_python.py",
+        "package": "vsce package",
+        "publish": "vsce publish"
     },
     "devDependencies": {
-        "@types/mocha": "^9.1.0",
         "@types/node": "^16.x",
         "@types/vscode": "^1.60.0",
-        "mocha": "^11.7.5",
-        "typescript": "^4.4.4"
+        "typescript": "^4.4.4",
+        "@types/mocha": "^9.1.0",
+        "mocha": "^9.2.0"
     }
 }

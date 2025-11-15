@@ -1,5 +1,29 @@
-out
-dist
-node_modules
-.vscode-test/
+# Compiled output
+out/
+dist/
 *.vsix
+
+# Node modules
+node_modules/
+
+# Python build artifacts
+build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

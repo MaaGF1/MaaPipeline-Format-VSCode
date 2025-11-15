@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('MAA Pipeline Formatter is now active!');
@@ -34,7 +36,7 @@ class MAAJsonFormattingProvider implements vscode.DocumentFormattingEditProvider
     ): Promise<vscode.TextEdit[]> {
         try {
             const originalText = document.getText();
-            const formattedText = await formatWithPython(originalText, this.context);
+            const formattedText = await formatWithExecutable(originalText, this.context);
             
             if (formattedText && formattedText !== originalText) {
                 const fullRange = new vscode.Range(
@@ -54,7 +56,7 @@ class MAAJsonFormattingProvider implements vscode.DocumentFormattingEditProvider
 async function formatDocument(document: vscode.TextDocument, context: vscode.ExtensionContext): Promise<void> {
     try {
         const originalText = document.getText();
-        const formattedText = await formatWithPython(originalText, context);
+        const formattedText = await formatWithExecutable(originalText, context);
         
         if (formattedText && formattedText !== originalText) {
             const editor = vscode.window.activeTextEditor;
@@ -78,29 +80,98 @@ async function formatDocument(document: vscode.TextDocument, context: vscode.Ext
     }
 }
 
-async function formatWithPython(jsonText: string, context: vscode.ExtensionContext): Promise<string> {
+function getExecutablePath(context: vscode.ExtensionContext): string {
+    const platform = os.platform();
+    let executableName: string;
+    
+    switch (platform) {
+        case 'win32':
+            executableName = 'format_pipeline.exe';
+            break;
+        default:
+            executableName = 'format_pipeline';
+            break;
+    }
+    
+    return path.join(context.extensionPath, 'dist', executableName);
+}
+
+async function formatWithExecutable(jsonText: string, context: vscode.ExtensionContext): Promise<string> {
     return new Promise((resolve, reject) => {
-        // 获取配置
         const config = vscode.workspace.getConfiguration('maapipeline-format');
-        let pythonPath = config.get<string>('pythonPath', 'python');
-        let scriptPath = config.get<string>('scriptPath', '');
+        const useBuiltinExecutable = config.get<boolean>('useBuiltinExecutable', true);
         
-        // 如果没有配置脚本路径，使用扩展内置的脚本
-        if (!scriptPath) {
-            scriptPath = path.join(context.extensionPath, 'python', 'format_pipeline.py');
-        }
+        let executablePath: string;
         
-        // 检查脚本是否存在
-        const fs = require('fs');
-        if (!fs.existsSync(scriptPath)) {
-            reject(new Error(`Python script not found: ${scriptPath}. Please install Python formatter or configure the path.`));
-            return;
+        if (useBuiltinExecutable) {
+            // 使用内置的可执行文件
+            executablePath = getExecutablePath(context);
+            
+            if (!fs.existsSync(executablePath)) {
+                reject(new Error(`Built-in executable not found: ${executablePath}. Please reinstall the extension.`));
+                return;
+            }
+        } else {
+            // 回退到 Python 脚本模式
+            const pythonPath = config.get<string>('pythonPath', 'python');
+            const scriptPath = path.join(context.extensionPath, 'python', 'format_pipeline.py');
+            
+            if (!fs.existsSync(scriptPath)) {
+                reject(new Error(`Python script not found: ${scriptPath}. Please reinstall the extension.`));
+                return;
+            }
+            
+            return formatWithPython(jsonText, pythonPath, scriptPath).then(resolve).catch(reject);
         }
 
-        // 执行 Python 脚本
-        const pythonProcess = spawn(pythonPath, [scriptPath], {
+        // 执行内置可执行文件
+        const process = spawn(executablePath, [], {
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
         });
+
+        let stdout = '';
+        let stderr = '';
+
+        process.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        process.on('close', (code) => {
+            if (code === 0) {
+                resolve(stdout);
+            } else {
+                const errorMsg = stderr.trim() || `Formatter exited with code ${code}`;
+                reject(new Error(errorMsg));
+            }
+        });
+
+        process.on('error', (error) => {
+            reject(new Error(`Failed to execute formatter: ${error.message}`));
+        });
+
+        // 设置超时
+        const timeout = setTimeout(() => {
+            process.kill();
+            reject(new Error('Formatter execution timed out'));
+        }, 30000);
+
+        process.on('close', () => {
+            clearTimeout(timeout);
+        });
+
+        // 发送 JSON 内容
+        process.stdin.write(jsonText);
+        process.stdin.end();
+    });
+}
+
+async function formatWithPython(jsonText: string, pythonPath: string, scriptPath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const pythonProcess = spawn(pythonPath, [scriptPath]);
 
         let stdout = '';
         let stderr = '';
@@ -123,24 +194,9 @@ async function formatWithPython(jsonText: string, context: vscode.ExtensionConte
         });
 
         pythonProcess.on('error', (error) => {
-            if (error.message.includes('ENOENT')) {
-                reject(new Error(`Python not found. Please install Python or configure the path in settings. Error: ${error.message}`));
-            } else {
-                reject(new Error(`Failed to execute Python script: ${error.message}`));
-            }
+            reject(new Error(`Failed to execute Python script: ${error.message}`));
         });
 
-        // 设置超时
-        const timeout = setTimeout(() => {
-            pythonProcess.kill();
-            reject(new Error('Python script execution timed out'));
-        }, 30000); // 30 seconds timeout
-
-        pythonProcess.on('close', () => {
-            clearTimeout(timeout);
-        });
-
-        // 将 JSON 内容发送给 Python 脚本
         pythonProcess.stdin.write(jsonText);
         pythonProcess.stdin.end();
     });
