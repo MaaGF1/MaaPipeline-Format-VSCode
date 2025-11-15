@@ -1,0 +1,94 @@
+{
+    "name": "maapipeline-format",
+    "displayName": "MAA Pipeline Formatter",
+    "description": "Format MaaFramework Pipeline JSON files",
+    "version": "0.0.1",
+    "publisher": "your-publisher",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Formatters"
+    ],
+    "keywords": [
+        "maa",
+        "pipeline",
+        "json",
+        "formatter"
+    ],
+    "activationEvents": [
+        "onLanguage:json"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "json",
+                "aliases": [
+                    "JSON",
+                    "json"
+                ],
+                "extensions": [
+                    ".json"
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "maapipeline-format.formatDocument",
+                "title": "Format MAA Pipeline",
+                "category": "MAA"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "maapipeline-format.formatDocument",
+                    "when": "resourceExtname == .json",
+                    "group": "1_modification@1"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "maapipeline-format.formatDocument",
+                    "when": "resourceExtname == .json"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "maapipeline-format.formatDocument",
+                "key": "ctrl+shift+alt+f",
+                "mac": "cmd+shift+alt+f",
+                "when": "editorTextFocus && resourceExtname == .json"
+            }
+        ],
+        "configuration": {
+            "title": "MAA Pipeline Formatter",
+            "properties": {
+                "maapipeline-format.pythonPath": {
+                    "type": "string",
+                    "default": "python",
+                    "description": "Path to Python executable (e.g., 'python', 'python3', or full path)"
+                },
+                "maapipeline-format.scriptPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the Python formatting script (leave empty to use built-in script)"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/mocha": "^9.1.0",
+        "@types/node": "^16.x",
+        "@types/vscode": "^1.60.0",
+        "mocha": "^11.7.5",
+        "typescript": "^4.4.4"
+    }
+}
