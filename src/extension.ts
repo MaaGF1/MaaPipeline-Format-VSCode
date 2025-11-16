@@ -7,11 +7,32 @@ import * as os from 'os';
 export function activate(context: vscode.ExtensionContext) {
     console.log('MAA Pipeline Formatter is now active!');
 
+    // 注册格式化提供者 - 提高优先级
     const provider = vscode.languages.registerDocumentFormattingEditProvider(
         { scheme: 'file', language: 'json' },
         new MAAJsonFormattingProvider(context)
     );
 
+    // 注册保存时格式化处理器
+    const onSaveProvider = vscode.workspace.onWillSaveTextDocument(async (event) => {
+        const config = vscode.workspace.getConfiguration('maapipeline-format');
+        const enableFormatOnSave = config.get<boolean>('enableFormatOnSave', true);
+        
+        if (!enableFormatOnSave) {
+            return;
+        }
+
+        const document = event.document;
+        
+        // 检查是否是 MAA Pipeline JSON 文件
+        if (isMaaPipelineJsonFile(document)) {
+            event.waitUntil(
+                formatDocumentForSave(document, context)
+            );
+        }
+    });
+
+    // 注册命令
     let disposable = vscode.commands.registerCommand('maapipeline-format.formatDocument', async () => {
         const editor = vscode.window.activeTextEditor;
         
@@ -33,7 +54,34 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    context.subscriptions.push(provider, disposable);
+    context.subscriptions.push(provider, onSaveProvider, disposable);
+}
+
+// 检测是否是 MAA Pipeline 相关的 JSON 文件
+function isMaaPipelineJsonFile(document: vscode.TextDocument): boolean {
+    if (!isJsonDocument(document)) {
+        return false;
+    }
+
+    const config = vscode.workspace.getConfiguration('maapipeline-format');
+    const filePatterns = config.get<string[]>('filePatterns', ['pipeline', 'interface', 'task']);
+    
+    const fileName = path.basename(document.fileName, '.json').toLowerCase();
+    
+    // 检查文件名是否包含 MAA Pipeline 相关关键词
+    for (const pattern of filePatterns) {
+        if (fileName.includes(pattern.toLowerCase())) {
+            return true;
+        }
+    }
+    
+    // 检查文件内容是否包含 MAA Pipeline 特征
+    const text = document.getText();
+    if (text.includes('"roi"') || text.includes('"recognition"') || text.includes('"action"') || text.includes('"target"')) {
+        return true;
+    }
+    
+    return false;
 }
 
 function isJsonDocument(document: vscode.TextDocument): boolean {
@@ -68,7 +116,7 @@ function isJsonDocument(document: vscode.TextDocument): boolean {
                 return true;
             }
         } catch {
-
+            // 忽略解析错误
         }
     }
     
@@ -84,9 +132,9 @@ class MAAJsonFormattingProvider implements vscode.DocumentFormattingEditProvider
         token: vscode.CancellationToken
     ): Promise<vscode.TextEdit[]> {
         try {
-            // 使用同样的检测逻辑
-            if (!isJsonDocument(document)) {
-                console.log(`MAA Pipeline Formatter: Skipping non-JSON file: ${document.fileName}`);
+            // 检查是否是 MAA Pipeline 文件
+            if (!isMaaPipelineJsonFile(document)) {
+                console.log(`MAA Pipeline Formatter: Skipping non-MAA Pipeline file: ${document.fileName}`);
                 return [];
             }
             
@@ -102,11 +150,31 @@ class MAAJsonFormattingProvider implements vscode.DocumentFormattingEditProvider
             }
         } catch (error) {
             console.error('MAA Pipeline format error:', error);
-            vscode.window.showErrorMessage(`MAA Pipeline format failed: ${error}`);
+            // 不显示错误消息，避免干扰用户
         }
         
         return [];
     }
+}
+
+// 保存时格式化的特殊处理
+async function formatDocumentForSave(document: vscode.TextDocument, context: vscode.ExtensionContext): Promise<vscode.TextEdit[]> {
+    try {
+        const originalText = document.getText();
+        const formattedText = await formatWithExecutable(originalText, context);
+        
+        if (formattedText && formattedText !== originalText) {
+            const fullRange = new vscode.Range(
+                document.positionAt(0),
+                document.positionAt(originalText.length)
+            );
+            return [vscode.TextEdit.replace(fullRange, formattedText)];
+        }
+    } catch (error) {
+        console.error('MAA Pipeline format on save error:', error);
+    }
+    
+    return [];
 }
 
 async function formatDocument(document: vscode.TextDocument, context: vscode.ExtensionContext): Promise<void> {

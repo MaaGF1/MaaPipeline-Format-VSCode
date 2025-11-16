@@ -2,7 +2,7 @@
     "name": "maapipeline-format",
     "displayName": "MAA Pipeline Formatter",
     "description": "Format MaaFramework Pipeline JSON files with intelligent structure-aware formatting",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "publisher": "SwordofMorning",
     "author": {
         "name": "MaaGF1",
@@ -86,6 +86,21 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Use built-in Python executable (recommended)"
+                },
+                "maapipeline-format.enableFormatOnSave": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable MAA Pipeline formatting on save"
+                },
+                "maapipeline-format.disableBuiltinJsonFormatter": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Disable VS Code's built-in JSON formatter to prevent conflicts"
+                },
+                "maapipeline-format.filePatterns": {
+                    "type": "array",
+                    "default": ["pipeline", "interface", "task"],
+                    "description": "File name patterns that should be formatted with MAA Pipeline formatter"
                 }
             }
         }
