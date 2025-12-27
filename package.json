@@ -2,7 +2,7 @@
     "name": "maapipeline-format",
     "displayName": "MAA Pipeline Formatter",
     "description": "Format MaaFramework Pipeline JSON files with intelligent structure-aware formatting",
-    "version": "1.0.2",
+    "version": "2.0.0",
     "publisher": "SwordofMorning",
     "author": {
         "name": "MaaGF1",
@@ -33,7 +33,8 @@
     ],
     "icon": "icon.png",
     "activationEvents": [
-        "onLanguage:json"
+        "onLanguage:json",
+        "onLanguage:jsonc"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -77,25 +78,10 @@
         "configuration": {
             "title": "MAA Pipeline Formatter",
             "properties": {
-                "maapipeline-format.pythonPath": {
-                    "type": "string",
-                    "default": "python",
-                    "description": "Path to Python executable (fallback only, built-in executable is preferred)"
-                },
-                "maapipeline-format.useBuiltinExecutable": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Use built-in Python executable (recommended)"
-                },
                 "maapipeline-format.enableFormatOnSave": {
                     "type": "boolean",
                     "default": true,
                     "description": "Enable MAA Pipeline formatting on save"
-                },
-                "maapipeline-format.disableBuiltinJsonFormatter": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Disable VS Code's built-in JSON formatter to prevent conflicts"
                 },
                 "maapipeline-format.filePatterns": {
                     "type": "array",
@@ -106,10 +92,9 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile && npm run build:python",
+        "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "build:python": "python build_python.py",
         "package": "vsce package",
         "publish": "vsce publish"
     },
