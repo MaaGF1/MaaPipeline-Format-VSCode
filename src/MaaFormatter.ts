@@ -109,17 +109,17 @@ class MaaLexer {
     private line = 1;
     private tokens: Token[] = [];
     
-    // Using sticky flag 'y' to match from specific position
+    // Fixed Regex Patterns with proper escaping
     private static PATTERNS: { type: TokenType; regex: RegExp }[] = [
         { type: TokenType.COMMENT, regex: /\/\/.*|\/\*[\s\S]*?\*\//y },
-        { type: TokenType.STRING, regex: /"(?:\\.|[^"\])*"/y },
+        { type: TokenType.STRING, regex: /"(?:\\.|[^"])*"/y },
         { type: TokenType.NUMBER, regex: /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y },
         { type: TokenType.BOOLEAN, regex: /true|false/y },
         { type: TokenType.NULL, regex: /null/y },
         { type: TokenType.LBRACE, regex: /\{/y },
         { type: TokenType.RBRACE, regex: /\}/y },
-        { type: TokenType.LBRACKET, regex: /\[/y },
-        { type: TokenType.RBRACKET, regex: /\]/y },
+        { type: TokenType.LBRACKET, regex: /\[/y }, // Fixed: escaped bracket
+        { type: TokenType.RBRACKET, regex: /\]/y }, // Fixed: escaped bracket
         { type: TokenType.COLON, regex: /:/y },
         { type: TokenType.COMMA, regex: /,/y },
         { type: TokenType.WHITESPACE, regex: /\s+/y },
@@ -151,6 +151,8 @@ class MaaLexer {
             }
 
             if (!matched) {
+                // Skip invalid character to prevent infinite loop, but throw error
+                // Or we can just throw immediately
                 throw new Error(`Unexpected character at line ${this.line}: ${this.text[this.pos]}`);
             }
         }
