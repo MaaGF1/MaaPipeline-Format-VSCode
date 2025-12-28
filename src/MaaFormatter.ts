@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 // ============================================================================
 
 export interface MaaFormatConfig {
+    version?: string;
     indent: {
         style: "space" | "tab";
         width: number;
@@ -20,35 +21,54 @@ export interface MaaFormatConfig {
     };
     file_handling: {
         preserve_comments: boolean;
+        output_suffix: string;
+        encoding: string;
         newline: "LF" | "CRLF";
     };
 }
 
 export const DEFAULT_CONFIG: MaaFormatConfig = {
+    version: "1.0",
     indent: {
-        style: "space",
-        width: 4
+        style: "tab",
+        width: 1
     },
     posix: {
-        insert_final_newline: true
+        insert_final_newline: false
     },
     formatting: {
         simple_array_threshold: 50,
         coordinate_fields: [
-            "roi", "roi_offset", "target", "target_offset",
-            "begin", "begin_offset", "end", "end_offset",
-            "lower", "upper"
+            "roi",
+            "roi_offset",
+            "target",
+            "target_offset",
+            "begin",
+            "begin_offset",
+            "end",
+            "end_offset",
+            "lower",
+            "upper"
         ],
         control_flow_fields: [
-            "next", "interrupt", "on_error", "template"
+            "next",
+            "interrupt",
+            "on_error",
+            "template"
         ],
         always_multiline_fields: [
-            "custom_action_param", "custom_param",
-            "parameters", "params", "options", "config"
+            "custom_action_param",
+            "custom_param",
+            "parameters",
+            "params",
+            "options",
+            "config"
         ]
     },
     file_handling: {
         preserve_comments: true,
+        output_suffix: "",
+        encoding: "utf-8",
         newline: "LF"
     }
 };
@@ -118,8 +138,8 @@ class MaaLexer {
         { type: TokenType.NULL, regex: /null/y },
         { type: TokenType.LBRACE, regex: /\{/y },
         { type: TokenType.RBRACE, regex: /\}/y },
-        { type: TokenType.LBRACKET, regex: /\[/y }, // Fixed: escaped bracket
-        { type: TokenType.RBRACKET, regex: /\]/y }, // Fixed: escaped bracket
+        { type: TokenType.LBRACKET, regex: /\[/y },
+        { type: TokenType.RBRACKET, regex: /\]/y },
         { type: TokenType.COLON, regex: /:/y },
         { type: TokenType.COMMA, regex: /,/y },
         { type: TokenType.WHITESPACE, regex: /\s+/y },
@@ -151,8 +171,6 @@ class MaaLexer {
             }
 
             if (!matched) {
-                // Skip invalid character to prevent infinite loop, but throw error
-                // Or we can just throw immediately
                 throw new Error(`Unexpected character at line ${this.line}: ${this.text[this.pos]}`);
             }
         }
@@ -184,13 +202,11 @@ class MaaParser {
     public parse(): AstNode {
         const rootComments: JsonComment[] = [];
         
-        // Handle leading comments
         while (this.peek()?.type === TokenType.COMMENT) {
             rootComments.push(this.parseComment());
         }
 
         if (!this.peek()) {
-            // Empty file or just comments. Return empty object as fallback root
             const root = new JsonObject();
             root.children = rootComments;
             return root;
@@ -198,7 +214,6 @@ class MaaParser {
 
         const root = this.parseValue();
 
-        // Attach leading comments to root if possible
         if (root instanceof JsonObject || root instanceof JsonArray) {
             root.children.unshift(...rootComments);
         }
@@ -268,19 +283,16 @@ class MaaParser {
                 continue;
             }
 
-            // Expect Key
             if (token.type === TokenType.STRING) {
                 const keyToken = this.consume();
                 const keyStr = JSON.parse(keyToken.value);
 
-                // Handle comments between key and colon
                 while (this.peek()?.type === TokenType.COMMENT) {
                     obj.children.push(this.parseComment());
                 }
 
                 this.consume(TokenType.COLON);
 
-                // Handle comments between colon and value
                 while (this.peek()?.type === TokenType.COMMENT) {
                     obj.children.push(this.parseComment());
                 }
@@ -361,7 +373,6 @@ export class MaaPipelineFormatter {
             }
         }
 
-        // Normalize newlines based on config
         const newline = this.config.file_handling.newline === "CRLF" ? "\r\n" : "\n";
         return formatted.replace(/\r?\n/g, newline);
     }
@@ -378,7 +389,6 @@ export class MaaPipelineFormatter {
     private shouldInlineArray(key: string, node: JsonArray): boolean {
         if (node.children.length === 0) return true;
 
-        // If any child is a comment or complex, do not inline
         if (node.children.some(c => c instanceof JsonComment || c instanceof JsonObject || c instanceof JsonArray)) {
             return false;
         }
@@ -386,7 +396,6 @@ export class MaaPipelineFormatter {
         if (this.isCoordinateArray(key, node)) return true;
         if (this.controlFlowFields.has(key)) return false;
 
-        // Check length threshold
         const tempStr = this.formatInlineArray(node);
         return tempStr.length <= this.config.formatting.simple_array_threshold;
     }
@@ -395,10 +404,8 @@ export class MaaPipelineFormatter {
         if (node.children.length === 0) return true;
         if (this.alwaysMultilineFields.has(key)) return false;
 
-        // If any child is a comment, do not inline
         if (node.children.some(c => c instanceof JsonComment)) return false;
 
-        // If any value is complex, do not inline
         for (const child of node.children) {
             if (!(child instanceof JsonComment)) {
                 if (child.value instanceof JsonObject || child.value instanceof JsonArray) {
@@ -437,7 +444,7 @@ export class MaaPipelineFormatter {
         }
 
         if (node instanceof JsonComment) {
-            if (inlineMode) return ""; // Should not happen
+            if (inlineMode) return "";
             return node.text;
         }
 
@@ -448,7 +455,6 @@ export class MaaPipelineFormatter {
             const lines: string[] = ["["];
             const indent = this.indentStr.repeat(level + 1);
 
-            // Filter actual values to manage commas
             const valueIndices = node.children
                 .map((c, i) => (c instanceof JsonComment ? -1 : i))
                 .filter(i => i !== -1);

@@ -2,7 +2,7 @@
     "name": "maapipeline-format",
     "displayName": "MAA Pipeline Formatter",
     "description": "Format MaaFramework Pipeline JSON files with intelligent structure-aware formatting",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "publisher": "SwordofMorning",
     "author": {
         "name": "MaaGF1",
@@ -80,7 +80,7 @@
             "properties": {
                 "maapipeline-format.enableFormatOnSave": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Enable MAA Pipeline formatting on save"
                 },
                 "maapipeline-format.filePatterns": {
